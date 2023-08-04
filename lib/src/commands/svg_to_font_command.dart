@@ -160,8 +160,6 @@ class SvgToFontCommand extends Command<int> {
       // Write the cleaned SVG data back to the file
       copy.writeAsStringSync(document.toXmlString(pretty: true, indent: '\t'));
     }
-
-    //   await Future.delayed(Duration(seconds: 60));
   }
 
   Future<void> _generateIconfont() async {
@@ -250,13 +248,6 @@ class SvgToFontCommand extends Command<int> {
           classBuilder.fields.add(
             Field(
               (FieldBuilder fieldBuild) {
-                if (!argResults![deleteInput]) {
-                  final String itemSvgPath =
-                      path.join(argResults![svgInputDir], '$key.svg');
-                  fieldBuild.docs.add(
-                    '/// File path: ${itemSvgPath.replaceAll(r'\', r'/')}',
-                  );
-                }
                 fieldBuild.name = key;
                 fieldBuild.type = refer('IconData');
                 fieldBuild.modifier = FieldModifier.final$;
