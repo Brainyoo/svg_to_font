@@ -133,6 +133,7 @@ class SvgToFontCommand extends Command<int> {
     }
     await outputDir.create(recursive: true);
 
+    //await Future.delayed(Duration(seconds: 60));
     for (final FileSystemEntity fileEntity in svgFiles) {
       final File file = File(fileEntity.path);
 
@@ -183,7 +184,7 @@ class SvgToFontCommand extends Command<int> {
         ),
         <String>[
           if (argResults![preprocess])
-            tempPreprocessDir
+            path.join(rootDirector.path, tempPreprocessDir)
           else
             path.join(path.current, argResults![svgInputDir]),
           '--name',
