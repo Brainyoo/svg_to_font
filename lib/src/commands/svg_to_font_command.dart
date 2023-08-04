@@ -8,6 +8,7 @@ import 'package:dart_style/dart_style.dart';
 import 'package:io/io.dart';
 import 'package:path/path.dart' as path;
 import 'package:recase/recase.dart';
+import 'package:xml/xml.dart';
 
 import '../constants.dart';
 import '../exception.dart';
@@ -31,8 +32,12 @@ class SvgToFontCommand extends Command<int> {
     );
     argParser.addOption(
       iconsClassName,
-      defaultsTo: defaultIconsClassName,
-      help: 'Flutter icons class Name',
+      help: 'Flutter icons class Name, defaults to input dir name',
+    );
+    argParser.addFlag(
+      preprocess,
+      defaultsTo: false,
+      help: 'If set remove mask and set height and width to 24x24 for all svg',
     );
     argParser.addFlag(
       deleteInput,
@@ -108,14 +113,66 @@ class SvgToFontCommand extends Command<int> {
     await stdout.addStream(npmInstallResult.stdout);
   }
 
-  Future<void> _generateIconfont() async {
-    final Directory outputDir =
-        Directory(path.join(rootDirector.path, tempOutputDir));
+  /// preprocess svg(remove mask, set height and width to 24x24)
+  Future<void> _preprocessSvgs() async {
+    final Directory dir =
+        Directory(path.join(path.current, argResults![svgInputDir]));
+    final List<FileSystemEntity> files = dir.listSync(recursive: true);
+    final Iterable<FileSystemEntity> svgFiles =
+        files.where((FileSystemEntity file) => file.path.endsWith('.svg'));
+
+    final Directory outputDir = Directory(
+      path.join(
+        rootDirector.path,
+        tempPreprocessDir,
+      ),
+    );
 
     if (outputDir.existsSync()) {
       await outputDir.delete(recursive: true);
     }
     await outputDir.create(recursive: true);
+
+    for (final FileSystemEntity fileEntity in svgFiles) {
+      final File file = File(fileEntity.path);
+
+      // Load the SVG data
+      final String svgData = file.readAsStringSync();
+
+      // Parse the SVG data into an XmlDocument
+      final XmlDocument document = XmlDocument.parse(svgData);
+
+      // Set the size for all to 24x24
+      for (final XmlElement element in document.findAllElements('svg')) {
+        element.setAttribute('height', '24');
+        element.setAttribute('width', '24');
+      }
+
+      // Remove the mask elements
+      document
+          .findAllElements('mask')
+          .toList()
+          .forEach((XmlElement node) => node.remove());
+      final File copy =
+          File(path.join(outputDir.path, path.basename(file.path)));
+
+      // Write the cleaned SVG data back to the file
+      copy.writeAsStringSync(document.toXmlString(pretty: true, indent: '\t'));
+    }
+
+    //   await Future.delayed(Duration(seconds: 60));
+  }
+
+  Future<void> _generateIconfont() async {
+    if (!argResults![preprocess]) {
+      final Directory outputDir =
+          Directory(path.join(rootDirector.path, tempOutputDir));
+
+      if (outputDir.existsSync()) {
+        await outputDir.delete(recursive: true);
+      }
+      await outputDir.create(recursive: true);
+    }
 
     try {
       final Process result = await Process.start(
@@ -125,9 +182,13 @@ class SvgToFontCommand extends Command<int> {
           'node_modules/.bin/fantasticon',
         ),
         <String>[
-          path.join(path.current, argResults![svgInputDir]),
+          if (argResults![preprocess])
+            tempPreprocessDir
+          else
+            path.join(path.current, argResults![svgInputDir]),
           '--name',
-          argResults![iconsClassName] ?? defaultIconsClassName,
+          argResults![iconsClassName] ??
+              (argResults![svgInputDir] as String).split('/').last,
           '--output',
           path.join(rootDirector.path, tempOutputDir),
           '--asset-types',
@@ -159,8 +220,8 @@ class SvgToFontCommand extends Command<int> {
   }
 
   Future<void> _generateFlutterFile() async {
-    final String className =
-        argResults![iconsClassName] ?? defaultIconsClassName;
+    final String className = argResults![iconsClassName] ??
+        (argResults![svgInputDir] as String).split('/').last;
     final File iconfontsFile = File.fromUri(
       rootDirector.uri.resolve(
         path.join(
@@ -206,6 +267,39 @@ class SvgToFontCommand extends Command<int> {
             ),
           );
         }
+
+        // Get Icon from String
+        builder.methods.add(
+          Method((MethodBuilder methodBuilder) {
+            const String start = 'switch (icon) {';
+            String between = '';
+            const String end = '''      
+                                default:
+                                  return null;
+                                }
+                              ''';
+
+            for (final String key in icons.keys) {
+              between += '''
+                  case '$key':
+            return $className.$key;
+            ''';
+            }
+
+            methodBuilder.returns = refer('IconData?');
+            methodBuilder.name = 'fromString';
+            methodBuilder.static = true;
+            methodBuilder.requiredParameters.add(
+              Parameter((ParameterBuilder parameterBuilder) {
+                parameterBuilder.name = 'icon';
+                parameterBuilder.type = refer('String?');
+              }),
+            );
+            methodBuilder.body = Code('$start\n$between$end');
+            methodBuilder.docs.add(
+                '/// Gibt die [IconData] für den String zurück, falls vorhanden. Ansonsten null.');
+          }),
+        );
       },
     );
 
@@ -245,8 +339,8 @@ const String fontFamily = '$className';
 
   /// copy file & delete svg or delete node dir
   Future<void> _copyFile() async {
-    final String className =
-        argResults![iconsClassName] ?? defaultIconsClassName;
+    final String className = argResults![iconsClassName] ??
+        (argResults![svgInputDir] as String).split('/').last;
 
     /// Create if the iconsClassName folder does not exist
     final Directory classFileDir = Directory(
@@ -315,6 +409,9 @@ const String fontFamily = '$className';
     _handleArguments();
     await _judgeNodeEnvironment();
     await _generatePackageJson();
+    if (argResults![preprocess]) {
+      await _preprocessSvgs();
+    }
     await _generateIconfont();
     await _generateFlutterFile();
     await _copyFile();

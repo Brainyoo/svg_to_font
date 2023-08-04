@@ -7,14 +7,14 @@ const String fontOutputDir = 'font-output';
 /// Flutter icons class Name
 const String iconsClassName = 'name';
 
-/// Flutter icons class default Name
-const String defaultIconsClassName = 'CamusIcons';
-
 /// Flutter icons output dir
 const String iconsOutputDir = 'class-output';
 
 /// Is delete your input svg, if false, can preview svg
 const String deleteInput = 'delete-input';
+
+/// If set remove mask and set height and width to 24x24 for all svg
+const String preprocess = 'preprocess';
 
 /// temp output dir
 const String tempDir = 'temp';
@@ -24,3 +24,6 @@ const String tempNodeDir = '$tempDir/node';
 
 /// Generate the artifact temporary directory
 const String tempOutputDir = '$tempDir/out';
+
+/// temp preprocess dir
+const String tempPreprocessDir = '$tempOutputDir/preprocess';

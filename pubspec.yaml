@@ -17,6 +17,7 @@ dependencies:
   io: ^1.0.3
   path: ^1.8.0
   recase: ^4.1.0
+  xml: ^6.3.0
 
 executables:
   svg_to_font: main
