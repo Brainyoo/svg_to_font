@@ -154,6 +154,12 @@ class SvgToFontCommand extends Command<int> {
           .findAllElements('mask')
           .toList()
           .forEach((XmlElement node) => node.remove());
+      // Remove the defs elements
+      document
+          .findAllElements('defs')
+          .toList()
+          .forEach((XmlElement node) => node.remove());
+          
       final File copy =
           File(path.join(outputDir.path, path.basename(file.path)));
 
