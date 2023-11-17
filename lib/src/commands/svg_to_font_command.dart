@@ -386,10 +386,10 @@ const String fontFamily = '$className';
     dir.delete(recursive: true);
     // if deleteInput is false, delete input svg
     if (argResults![deleteInput]) {
-      final Directory soureFileDir =
+      final Directory sourceFileDir =
           Directory(path.join(rootDirector.path, argResults![svgInputDir]));
-      if (soureFileDir.existsSync()) {
-        await soureFileDir.delete();
+      if (sourceFileDir.existsSync()) {
+        await sourceFileDir.delete();
       }
     }
 
