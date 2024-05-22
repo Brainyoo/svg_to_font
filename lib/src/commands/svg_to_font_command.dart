@@ -159,7 +159,7 @@ class SvgToFontCommand extends Command<int> {
           .findAllElements('defs')
           .toList()
           .forEach((XmlElement node) => node.remove());
-          
+
       final File copy =
           File(path.join(outputDir.path, path.basename(file.path)));
 
@@ -249,6 +249,18 @@ class SvgToFontCommand extends Command<int> {
                 constructorBuilder..name = '$className._',
           ),
         );
+        classBuilder.fields.add(
+          Field(
+            (FieldBuilder fieldBuild) {
+              fieldBuild.name = 'fontFamily';
+              fieldBuild.type = refer('String');
+              fieldBuild.modifier = FieldModifier.final$;
+              fieldBuild.assignment = Code('\'$className\'');
+              fieldBuild.static = true;
+              fieldBuild.modifier = FieldModifier.constant;
+            },
+          ),
+        );
         for (final String key in icons.keys) {
           final String codePoint = '0x${icons[key].toRadixString(16)}';
           classBuilder.fields.add(
@@ -271,7 +283,7 @@ class SvgToFontCommand extends Command<int> {
           Method((MethodBuilder methodBuilder) {
             const String start = 'switch (icon) {';
             String between = '';
-            const String end = '''      
+            const String end = '''
                                 default:
                                   return null;
                                 }
@@ -313,10 +325,8 @@ class SvgToFontCommand extends Command<int> {
 
 ''';
 
-    final String import = """
+    const String import = """
 import 'package:flutter/material.dart';
-
-const String fontFamily = '$className';
 
     """;
     final String emitterResult =
